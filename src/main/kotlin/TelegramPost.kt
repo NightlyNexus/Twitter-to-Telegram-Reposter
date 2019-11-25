@@ -9,18 +9,31 @@ class TelegramPost private constructor(
 ) {
   companion object {
     fun TwitterPost.toTelegramPost(client: OkHttpClient): TelegramPost {
-      var messageText = full_text
+      val textReplacements = mutableListOf<TextReplacement>()
       var videoUrl: String? = null
       var videoThumbnailUrl: String? = null
       var photos: MutableList<String>? = null
-      for (j in entities.urls.indices) {
-        val url = entities.urls[j]
-        messageText = messageText.replace(url.url, url.expanded_url)
+      for (i in entities.user_mentions.indices) {
+        val userMention = entities.user_mentions[i]
+        if (userMention.indices.size != 2) {
+          throw RuntimeException("Unexpected user mention indices: ${userMention.indices}")
+        }
+        textReplacements += TextReplacement(userMention.name, userMention.indices)
+      }
+      for (i in entities.urls.indices) {
+        val url = entities.urls[i]
+        if (url.indices.size != 2) {
+          throw RuntimeException("Unexpected url indices: ${url.indices}")
+        }
+        textReplacements += TextReplacement(url.expanded_url, url.indices)
       }
       if (extended_entities != null) {
-        for (j in extended_entities.media.indices) {
-          val media = extended_entities.media[j]
-          messageText = messageText.replace(media.url, "")
+        for (i in extended_entities.media.indices) {
+          val media = extended_entities.media[i]
+          if (media.indices.size != 2) {
+            throw RuntimeException("Unexpected media indices: ${media.indices}")
+          }
+          textReplacements += TextReplacement(null, media.indices)
           when (media.type) {
             "video" -> {
               if (videoUrl != null) {
@@ -46,7 +59,32 @@ class TelegramPost private constructor(
           }
         }
       }
+      textReplacements.sort()
+      val messageText = StringBuilder(full_text.length + 20).append(full_text).apply {
+        for (i in textReplacements.size - 1 downTo 0) {
+          val textReplacement = textReplacements[i]
+          if (textReplacement.replacementText == null) {
+            delete(
+                textReplacement.indices[0],
+                textReplacement.indices[1]
+            )
+          } else {
+            replace(
+                textReplacement.indices[0],
+                textReplacement.indices[1],
+                textReplacement.replacementText
+            )
+          }
+        }
+      }.toString()
       return TelegramPost(messageText, videoUrl, videoThumbnailUrl, photos)
     }
   }
+}
+
+private class TextReplacement(
+  val replacementText: String?,
+  val indices: List<Int>
+) : Comparable<TextReplacement> {
+  override fun compareTo(other: TextReplacement) = indices[0] - other.indices[0]
 }

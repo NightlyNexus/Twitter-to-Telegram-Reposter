@@ -111,4 +111,8 @@ fun main() {
           }
     }
   }
+  // Let the process die.
+  client.dispatcher.executorService.shutdown()
+  client.connectionPool.evictAll()
+  client.cache?.close()
 }

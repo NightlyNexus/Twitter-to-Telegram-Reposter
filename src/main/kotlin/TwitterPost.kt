@@ -15,13 +15,16 @@ class TwitterPost constructor(
 
   @JsonClass(generateAdapter = true)
   class UserMention constructor(
-    val screen_name: String
+    val screen_name: String,
+    val name: String,
+    val indices: List<Int>
   )
 
   @JsonClass(generateAdapter = true)
   class Url constructor(
     val url: String,
-    val expanded_url: String
+    val expanded_url: String,
+    val indices: List<Int>
   )
 
   @JsonClass(generateAdapter = true)
@@ -34,6 +37,7 @@ class TwitterPost constructor(
     val media_url_https: String,
     val url: String,
     val type: String,
+    val indices: List<Int>,
     val video_info: VideoInfo?
   )
 
