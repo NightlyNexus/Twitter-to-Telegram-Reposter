@@ -36,7 +36,6 @@ class TelegramPoster(
       .build()
 
   fun post(post: TelegramPost) {
-    var gallery = false
     val url = if (post.videoUrl != null) {
       httpUrlVideo.newBuilder()
           .addQueryParameter("video", post.videoUrl)
@@ -50,9 +49,8 @@ class TelegramPoster(
             .addQueryParameter("caption", post.text)
             .build()
       } else {
-        gallery = true
         httpUrlPhotos.newBuilder()
-            .addQueryParameter("media", encodeInputMediaPhoto(post.photoUrls))
+            .addQueryParameter("media", encodeInputMediaPhoto(post.photoUrls, post.text))
             .build()
       }
     } else {
@@ -69,28 +67,11 @@ class TelegramPoster(
             )
           }
         }
-    // Send text in a separate post for 2+ photos due to gallery view.
-    if (gallery) {
-      client.newCall(
-          Request.Builder().url(
-              httpUrlText.newBuilder()
-                  .addQueryParameter("text", post.text)
-                  .build()
-          ).build()
-      )
-          .execute()
-          .use { response ->
-            if (!response.isSuccessful) {
-              throw RuntimeException(
-                  "Telegram post HTTP error: ${response.code}. $url\n${response.body!!.string()}"
-              )
-            }
-          }
-    }
   }
 
   private fun encodeInputMediaPhoto(
-    photoUrls: List<String>
+    photoUrls: List<String>,
+    text: String
   ): String {
     require(photoUrls.size >= 2)
     val buffer = Buffer()
@@ -104,6 +85,12 @@ class TelegramPoster(
           .value("photo")
           .name("media")
           .value(photoUrl)
+          .apply {
+            if (i == 0) {
+              name("caption")
+              value(text)
+            }
+          }
           .endObject()
     }
     writer.endArray()

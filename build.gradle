@@ -1,7 +1,7 @@
 plugins {
-    id 'java'
-    id 'org.jetbrains.kotlin.jvm' version '1.3.60'
-    id "org.jetbrains.kotlin.kapt" version "1.3.60"
+  id 'java'
+  id 'org.jetbrains.kotlin.jvm' version '1.3.60'
+  id "org.jetbrains.kotlin.kapt" version "1.3.60"
 }
 
 group 'repost-twitter-to-telegram'
@@ -10,21 +10,21 @@ version '1.0-SNAPSHOT'
 sourceCompatibility = 1.8
 
 repositories {
-    mavenCentral()
+  mavenCentral()
 }
 
 dependencies {
-    implementation("com.squareup.okhttp3:okhttp:4.2.2")
-    implementation("com.squareup.okio:okio:2.4.1")
-    implementation("com.squareup.moshi:moshi:1.9.2")
-    kapt("com.squareup.moshi:moshi-kotlin-codegen:1.9.2")
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-    testCompile group: 'junit', name: 'junit', version: '4.12'
+  implementation("com.squareup.okhttp3:okhttp:4.2.2")
+  implementation("com.squareup.okio:okio:2.4.1")
+  implementation("com.squareup.moshi:moshi:1.9.2")
+  kapt("com.squareup.moshi:moshi-kotlin-codegen:1.9.2")
+  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+  testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 
 compileKotlin {
-    kotlinOptions.jvmTarget = "1.8"
+  kotlinOptions.jvmTarget = "1.8"
 }
 compileTestKotlin {
-    kotlinOptions.jvmTarget = "1.8"
+  kotlinOptions.jvmTarget = "1.8"
 }
