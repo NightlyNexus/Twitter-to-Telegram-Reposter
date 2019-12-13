@@ -39,7 +39,10 @@ class TelegramPost private constructor(
               if (videoUrl != null) {
                 throw RuntimeException("More than 1 video.")
               }
-              videoUrl = media.video_info!!.variants[0].url.toHttpUrl()
+              val mp4Variant = media.video_info!!.variants.first { variant ->
+                variant.content_type == "video/mp4"
+              }
+              videoUrl = mp4Variant.url.toHttpUrl()
                   .newBuilder()
                   // Telegram API does not like query parameters in the video url.
                   .removeAllEncodedQueryParameters("tag")
