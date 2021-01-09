@@ -43,7 +43,7 @@ class TwitterPost constructor(
 
   @JsonClass(generateAdapter = true)
   class VideoInfo constructor(
-    val duration_millis: Long,
+    val duration_millis: Long?,
     val variants: List<Variant>
   )
 

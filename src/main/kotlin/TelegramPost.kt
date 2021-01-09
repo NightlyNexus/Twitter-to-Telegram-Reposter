@@ -1,16 +1,15 @@
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.OkHttpClient
 
 class TelegramPost private constructor(
   val text: String,
-  val videoUrl: String?,
+  val videoUrls: List<String>?,
   val videoThumbnailUrl: String?,
   val photoUrls: List<String>?
 ) {
   companion object {
-    fun TwitterPost.toTelegramPost(client: OkHttpClient): TelegramPost {
+    fun TwitterPost.toTelegramPost(): TelegramPost {
       val textReplacements = mutableListOf<TextReplacement>()
-      var videoUrl: String? = null
+      var videoUrls: MutableList<String>? = null
       var videoThumbnailUrl: String? = null
       var photos: MutableList<String>? = null
       for (i in entities.user_mentions.indices) {
@@ -34,31 +33,49 @@ class TelegramPost private constructor(
             throw RuntimeException("Unexpected media indices: ${media.indices}")
           }
           textReplacements += TextReplacement(null, media.indices)
-          when (media.type) {
-            "video" -> {
-              if (videoUrl != null) {
-                throw RuntimeException("More than 1 video.")
+          if (media.type == "video" || media.type == "animated_gif") {
+            if (videoUrls != null) {
+              throw RuntimeException("More than 1 video.")
+            }
+            val variants = media.video_info!!.variants.toMutableList()
+            // Sort high to low bitrates.
+            variants.sortWith(Comparator(
+                fun(o1: TwitterPost.Variant, o2: TwitterPost.Variant): Int {
+                  if (o1.bitrate == null) {
+                    if (o2.bitrate == null) {
+                      return 0
+                    }
+                    return 1
+                  }
+                  if (o2.bitrate == null) {
+                    return -1
+                  }
+                  return o2.bitrate.compareTo(o1.bitrate)
+                }))
+            videoUrls = mutableListOf()
+            for (j in variants.indices) {
+              val variant = variants[j]
+              if (variant.content_type != "video/mp4") {
+                break // Sorted last.
               }
-              val mp4Variant = media.video_info!!.variants.first { variant ->
-                variant.content_type == "video/mp4"
-              }
-              videoUrl = mp4Variant.url.toHttpUrl()
+              videoUrls.add(variant.url.toHttpUrl()
                   .newBuilder()
-                  // Telegram API does not like query parameters in the video url.
+                  // The Telegram API does not like query parameters in the video url.
                   .removeAllEncodedQueryParameters("tag")
                   .build()
                   .toString()
-              videoThumbnailUrl = media.media_url_https
+              )
             }
-            "photo" -> {
-              if (photos == null) {
-                photos = mutableListOf()
-              }
-              photos.add(media.media_url_https)
+            videoThumbnailUrl = media.media_url_https
+          }
+          else if (media.type == "photo") {
+            if (photos == null) {
+              photos = mutableListOf()
             }
-            else -> {
-              throw RuntimeException("Unhandled media: ${media.type}")
-            }
+            photos.add(media.media_url_https)
+          }
+          else {
+            throw RuntimeException("Unhandled media: ${media.type}")
           }
         }
       }
@@ -80,14 +97,14 @@ class TelegramPost private constructor(
           }
         }
       }.toString()
-      return TelegramPost(messageText, videoUrl, videoThumbnailUrl, photos)
+      return TelegramPost(messageText, videoUrls, videoThumbnailUrl, photos)
     }
   }
-}
 
-private class TextReplacement(
-  val replacementText: String?,
-  val indices: List<Int>
-) : Comparable<TextReplacement> {
-  override fun compareTo(other: TextReplacement) = indices[0] - other.indices[0]
+  private class TextReplacement(
+    val replacementText: String?,
+    val indices: List<Int>
+  ) : Comparable<TextReplacement> {
+    override fun compareTo(other: TextReplacement) = indices[0] - other.indices[0]
+  }
 }

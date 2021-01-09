@@ -36,13 +36,11 @@ class TelegramPoster(
       .build()
 
   fun post(post: TelegramPost) {
-    val url = if (post.videoUrl != null) {
-      httpUrlVideo.newBuilder()
-          .addQueryParameter("video", post.videoUrl)
-          .addQueryParameter("thumb", post.videoThumbnailUrl)
-          .addQueryParameter("caption", post.text)
-          .build()
+    val url = if (post.videoUrls != null) {
+      postVideo(post.videoUrls, 0, post.videoThumbnailUrl!!, post.text)
+      return
     } else if (post.photoUrls != null) {
+      require(post.photoUrls.isNotEmpty())
       if (post.photoUrls.size == 1) {
         httpUrlPhoto.newBuilder()
             .addQueryParameter("photo", post.photoUrls[0])
@@ -61,6 +59,32 @@ class TelegramPoster(
     client.newCall(Request.Builder().url(url).build())
         .execute()
         .use { response ->
+          if (!response.isSuccessful) {
+            throw RuntimeException(
+                "Telegram post HTTP error: ${response.code}. $url\n${response.body!!.string()}"
+            )
+          }
+        }
+  }
+
+  private fun postVideo(
+    videoUrls: List<String>,
+    index: Int,
+    videoThumbnailUrl: String,
+    text: String
+  ) {
+    val url = httpUrlVideo.newBuilder()
+        .addQueryParameter("video", videoUrls[index])
+        .addQueryParameter("thumb", videoThumbnailUrl)
+        .addQueryParameter("caption", text)
+        .build()
+    client.newCall(Request.Builder().url(url).build())
+        .execute()
+        .use { response ->
+          if (response.code == 400 && index + 1 != videoUrls.size) {
+            postVideo(videoUrls, index + 1, videoThumbnailUrl, text)
+            return
+          }
           if (!response.isSuccessful) {
             throw RuntimeException(
                 "Telegram post HTTP error: ${response.code}. $url\n${response.body!!.string()}"

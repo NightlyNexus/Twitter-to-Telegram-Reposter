@@ -91,28 +91,31 @@ fun main() {
           Types.newParameterizedType(List::class.java, TwitterPost::class.java)
       )
   val fetcher = TwitterPostsFetcher(client, tweetsAdapter, twitterBearerToken!!, twitterHandle!!)
-  val messages = fetcher.fetch(twitterSinceId)
-  val poster = TelegramPoster(client, telegramApiKey!!, telegramChatId!!)
-
-  var newTwitterSinceId: String? = null
   try {
-    for (i in messages.indices) {
-      val message = messages[i]
-      val telegramPost = message.toTelegramPost(client)
-      poster.post(telegramPost)
-      newTwitterSinceId = message.id_str
+    val messages = fetcher.fetch(twitterSinceId)
+    val poster = TelegramPoster(client, telegramApiKey!!, telegramChatId!!)
+
+    var newTwitterSinceId: String? = null
+    try {
+      for (i in messages.indices) {
+        val message = messages[i]
+        val telegramPost = message.toTelegramPost()
+        poster.post(telegramPost)
+        newTwitterSinceId = message.id_str
+      }
+    } finally {
+      if (newTwitterSinceId != null) {
+        twitterSinceIdFile.sink()
+            .buffer()
+            .use { sink ->
+              sink.writeUtf8(newTwitterSinceId)
+            }
+      }
     }
   } finally {
-    if (newTwitterSinceId != null) {
-      twitterSinceIdFile.sink()
-          .buffer()
-          .use { sink ->
-            sink.writeUtf8(newTwitterSinceId)
-          }
-    }
+    // Let the process die.
+    client.dispatcher.executorService.shutdown()
+    client.connectionPool.evictAll()
+    client.cache?.close()
   }
-  // Let the process die.
-  client.dispatcher.executorService.shutdown()
-  client.connectionPool.evictAll()
-  client.cache?.close()
 }
